@@ -79,16 +79,32 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
  */
 export const fieldAst = (field: DataModelField) => {
 	const type = field.type
-	const baseExpression = builtInTypeAst(type.type)
 
-	const fieldAst = type.array ? factory.createCallExpression(
-		factory.createPropertyAccessExpression(
-			factory.createIdentifier("Schema"),
-			factory.createIdentifier("Array")
-		),
-		undefined,
-		[baseExpression]
-	) : baseExpression
+	let fieldAst: ts.Expression = builtInTypeAst(type.type)
+
+	if (type.array) {
+		fieldAst = factory.createCallExpression(
+			factory.createPropertyAccessExpression(
+				factory.createIdentifier("Schema"),
+				factory.createIdentifier("Array")
+			),
+			undefined,
+			[fieldAst]
+		)
+	}
+	if (type.optional) {
+		fieldAst = factory.createCallExpression(
+			factory.createPropertyAccessExpression(
+				fieldAst,
+				factory.createIdentifier("pipe")
+			),
+			undefined,
+			[factory.createPropertyAccessExpression(
+				factory.createIdentifier("Schema"),
+				factory.createIdentifier("optional")
+			)])	
+	}
+
 
 	return factory.createPropertyAssignment(
 		factory.createIdentifier(field.name),

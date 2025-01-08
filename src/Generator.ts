@@ -8,9 +8,11 @@ export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(fun
 	const path = yield* Path.Path
 	const dataModels = model.declarations.filter(isDataModel);
 
-	yield* fs.makeDirectory(outputFolder);
+	const modelsDirPath = path.join(outputFolder, "models");
+	yield* fs.makeDirectory(modelsDirPath, { recursive: true });
+
 	yield* Effect.forEach(dataModels, dataModel => Effect.gen(function* () {
-		const filePath = path.join(outputFolder, dataModel.name + ".ts");
+		const filePath = path.join(modelsDirPath, dataModel.name + ".ts");
 		yield* fs.writeFileString(filePath, Ast.astToString([
 			Ast.schemaImportAst,
 			Ast.modelAst(dataModel, { export: true })
