@@ -13,7 +13,7 @@ export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(fun
 		const filePath = path.join(outputFolder, dataModel.name + ".ts");
 		yield* fs.writeFileString(filePath, Ast.astToString([
 			Ast.schemaImportAst,
-			Ast.modelAst(dataModel)
+			Ast.modelAst(dataModel, { export: true })
 		]));
 	}), { concurrency: "unbounded" })
 })

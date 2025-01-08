@@ -1,7 +1,7 @@
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import type { DMMF } from '@prisma/generator-helper';
 import { PluginOptions, resolvePath } from '@zenstackhq/sdk';
-import { isDataModel, Model } from '@zenstackhq/sdk/ast';
+import { Model } from '@zenstackhq/sdk/ast';
 import { config } from 'dotenv';
 import { Config, Effect } from "effect";
 import * as Generator from "./Generator";
@@ -15,9 +15,7 @@ const run = (model: Model, options: PluginOptions, dmmf: DMMF.Document) => Effec
     const isDisabled = yield* Config.boolean("DISABLE_ZENSTACK_EFFECT").pipe(Config.withDefault(false)) // todo! include options.disable
     if(isDisabled) { return }
 
-    const dataModels = model.declarations.filter(isDataModel);
     const outputFolder = resolvePath((options.output as string) ?? 'effect', options);
-
     yield* Generator.runCodegen(model, outputFolder);
 
 }).pipe(

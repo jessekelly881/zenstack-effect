@@ -57,7 +57,7 @@ export const schemaImportAst = factory.createImportDeclaration(
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
  */
-export const builtInTypeAst = (type: BuiltinType) =>
+export const builtInTypeAst = (type: BuiltinType | undefined) =>
 	factory.createPropertyAccessExpression(
 		factory.createIdentifier("Schema"),
 		Match.value(type).pipe(
@@ -70,7 +70,7 @@ export const builtInTypeAst = (type: BuiltinType) =>
 			Match.when("Decimal", () => factory.createIdentifier("Number")),
 			Match.when("Bytes", () => factory.createIdentifier("Uint8Array")),
 			Match.when("DateTime", () => factory.createIdentifier("DateTimeUtc")),
-			Match.exhaustive,
+			Match.orElse(() => factory.createIdentifier("Unknown")),
 		),
 	);
 
@@ -78,10 +78,8 @@ export const builtInTypeAst = (type: BuiltinType) =>
  * Generates a TypeScript AST for a `DataModelField`. Returns a `ts.PropertyAssignment`.
  */
 export const fieldAst = (field: DataModelField) => {
-	const value = factory.createPropertyAccessExpression(
-		factory.createIdentifier("Schema"),
-		factory.createIdentifier("String"),
-	);
+	const type = field.type
+	const value = builtInTypeAst(type.type)
 
 	return factory.createPropertyAssignment(
 		factory.createIdentifier(field.name),

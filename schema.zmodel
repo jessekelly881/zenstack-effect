@@ -18,6 +18,11 @@ plugin zenstackmd {
     provider = './dist/index.js'
 }
 
+plugin zod {
+    provider = '@core/zod'
+    output = "./zod"
+}
+
 /*
  * Enum for user's role in a space
  */
