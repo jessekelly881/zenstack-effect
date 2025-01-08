@@ -1,15 +1,15 @@
 import ts, { factory } from "typescript";
 
-import type {
-	BuiltinType,
-	DataModel,
-	DataModelField,
+import {
+	Enum,
+	type BuiltinType,
+	type DataModel,
+	type DataModelField,
 } from "@zenstackhq/sdk/ast";
 import { Match } from "effect";
 
 /**
  * Convert an AST to a string
- * @internal
  */
 export const astToString = (
 	nodes: ts.Node | ts.Node[],
@@ -35,7 +35,6 @@ export const astToString = (
 
 /**
  * Import declaration for `import { Schema } from "effect"`
- * @internal
  */
 export const schemaImportAst = factory.createImportDeclaration(
 	undefined,
@@ -79,7 +78,6 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
  */
 export const fieldAst = (field: DataModelField) => {
 	const type = field.type
-	type.reference?.ref?.name
 
 	let fieldAst: ts.Expression = builtInTypeAst(type.type)
 
@@ -156,3 +154,24 @@ export const modelAst = (
 		],
 		[],
 	);
+
+export const enumAst = (enum_: Enum) => 
+  factory.createVariableStatement(
+    [factory.createToken(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [factory.createVariableDeclaration(
+        factory.createIdentifier(enum_.name),
+        undefined,
+        undefined,
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier("Schema"),
+            factory.createIdentifier("Literal")
+          ),
+          undefined,
+			enum_.fields.map(field => factory.createStringLiteral(field.name))
+        )
+      )],
+      ts.NodeFlags.Const
+    )
+  )
