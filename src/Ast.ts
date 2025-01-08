@@ -79,6 +79,7 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
  */
 export const fieldAst = (field: DataModelField) => {
 	const type = field.type
+	type.reference?.ref?.name
 
 	let fieldAst: ts.Expression = builtInTypeAst(type.type)
 

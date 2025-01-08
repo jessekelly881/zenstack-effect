@@ -8,6 +8,11 @@ export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(fun
 	const path = yield* Path.Path
 	const dataModels = model.declarations.filter(isDataModel);
 
+	// start fresh
+	if(yield* fs.exists(outputFolder)) {
+		yield* fs.remove(outputFolder, { recursive: true });
+	}
+
 	const modelsDirPath = path.join(outputFolder, "models");
 	yield* fs.makeDirectory(modelsDirPath, { recursive: true });
 
