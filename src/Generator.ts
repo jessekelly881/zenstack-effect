@@ -1,11 +1,11 @@
 import { FileSystem, Path } from "@effect/platform";
 import { PlatformError } from "@effect/platform/Error";
 import { isDataModel, isEnum, isTypeDef, Model } from "@zenstackhq/sdk/ast";
-import { Effect, Layer, Predicate, Scope } from "effect";
+import { Effect, Layer, Predicate } from "effect";
 import * as Ast from "./Ast";
 
 export class Generator extends Effect.Tag("Generator")<Generator, {
-	readonly run: (model: Model, outputFolder: string) => Effect.Effect<void, PlatformError, Scope.Scope>
+	readonly run: (model: Model, outputFolder: string) => Effect.Effect<void, PlatformError>
 }>() { }
 
 export const layer = Layer.effect(Generator, Effect.gen(function* () {
@@ -49,7 +49,9 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 		yield* runCodegen(model, tempDir);
 
 		yield* fs.copy(tempDir, outputDirectoryPath, { overwrite: true, preserveTimestamps: true })
-	})
+	}).pipe(Effect.scoped)
 
-	return { run }
+	return {
+		run
+	}
 }))
