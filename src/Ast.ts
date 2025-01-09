@@ -144,7 +144,7 @@ export const commonTypesImportAst = factory.createImportDeclaration(
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
  */
-export const builtInTypeAst = (type: BuiltinType) =>
+export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
 	factory.createPropertyAccessExpression(
 		factory.createIdentifier("Schema"),
 		Match.value(type).pipe(
@@ -154,7 +154,6 @@ export const builtInTypeAst = (type: BuiltinType) =>
 			Match.when("Float", () => factory.createIdentifier("Number")),
 			Match.when("String", () => factory.createIdentifier("String")),
 			Match.when("Json", () => factory.createIdentifier("Object")),
-			Match.when("Decimal", () => factory.createIdentifier("Number")),
 			Match.when("Bytes", () => factory.createIdentifier("Uint8Array")),
 			Match.when("DateTime", () => factory.createIdentifier("DateTimeUtc")),
 			Match.exhaustive
@@ -181,7 +180,16 @@ export const fieldAst = (field: DataModelField | TypeDefField) => {
 		else { fieldAst = unknownSchemaAst; }
 	}
 
-	else if (type.type) { fieldAst = builtInTypeAst(type.type) }
+	else if (type.type) {
+		if (type.type === "Decimal") {
+			// todo! Add to ImportSet
+			fieldAst = factory.createIdentifier("Decimal")
+		}
+		else {
+			fieldAst = builtInTypeAst(type.type)
+		}
+	}
+
 	else { fieldAst = unknownSchemaAst }
 
 	if (type.array) {
