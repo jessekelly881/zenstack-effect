@@ -164,8 +164,10 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 	let fieldAst: ts.Expression;
 
 	if (field.type.reference?.ref) {
+		const name = field.type.reference.ref.name;
 		if (isEnum(field.type.reference?.ref)) {
-			fieldAst = factory.createIdentifier(field.type.reference.ref.name);
+			yield* importSet.addImport({ type: "model", name });
+			fieldAst = factory.createIdentifier(name);
 		}
 
 		else if (isTypeDef(field.type.reference?.ref)) {
@@ -289,12 +291,35 @@ export const modelFileAst = (model: DataModel | TypeDef) => Effect.gen(function*
 	const commonImports = yield* importSet.imports.pipe(
 		Effect.map(
 			Arr.filterMap(i => i.type === "common" ? Option.some(i.name) : Option.none())
-		)
+		),
+	)
+
+	const modelImports = yield* importSet.imports.pipe(
+		Effect.map(
+			Arr.filterMap(i => i.type === "model" ? Option.some(i.name) : Option.none())
+		),
+		Effect.map(Arr.map(name =>
+			factory.createImportDeclaration(
+				undefined,
+				factory.createImportClause(
+					false,
+					undefined,
+					factory.createNamedImports([factory.createImportSpecifier(
+						false,
+						undefined,
+						factory.createIdentifier(name)
+					)])
+				),
+				factory.createStringLiteral(`./${name}`),
+				undefined
+			)
+		))
 	)
 
 	return [
 		schemaImportAst,
 		...(commonImports.length > 0 ? [commonImportsAst(commonImports)] : []),
+		...modelImports,
 		modelAst
 	]
 }).pipe(Effect.provide(ImportSet.Default))
