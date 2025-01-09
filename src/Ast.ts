@@ -296,24 +296,23 @@ export const modelFileAst = (model: DataModel | TypeDef) => Effect.gen(function*
 
 	const modelImports = yield* importSet.imports.pipe(
 		Effect.map(
-			Arr.filterMap(i => i.type === "model" ? Option.some(i.name) : Option.none())
-		),
-		Effect.map(Arr.map(name =>
-			factory.createImportDeclaration(
-				undefined,
-				factory.createImportClause(
-					false,
+			Arr.filterMap(i => i.type === "model" ? Option.some(
+				factory.createImportDeclaration(
 					undefined,
-					factory.createNamedImports([factory.createImportSpecifier(
+					factory.createImportClause(
 						false,
 						undefined,
-						factory.createIdentifier(name)
-					)])
-				),
-				factory.createStringLiteral(`./${name}`),
-				undefined
-			)
-		))
+						factory.createNamedImports([factory.createImportSpecifier(
+							false,
+							undefined,
+							factory.createIdentifier(i.name)
+						)])
+					),
+					factory.createStringLiteral(`./${i.name}`),
+					undefined
+				)
+			) : Option.none())
+		),
 	)
 
 	return [
