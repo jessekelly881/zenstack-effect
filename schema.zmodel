@@ -18,6 +18,11 @@ plugin zenstackmd {
     provider = './dist/index.js'
 }
 
+plugin zod {
+    provider = '@core/zod'
+    output   = './zod'
+}
+
 /*
  * Enum for user's role in a space
  */
@@ -37,6 +42,7 @@ model Space {
     slug      String      @unique @regex('^[0-9a-zA-Z]{4,16}$')
     members   SpaceUser[]
     lists     List[]
+    decimal   Decimal
     
     // require login
     @@deny('all', auth() == null)

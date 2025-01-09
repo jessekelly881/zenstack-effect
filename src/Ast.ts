@@ -91,6 +91,7 @@ export const fieldAst = (field: DataModelField) => {
 			[fieldAst]
 		)
 	}
+
 	if (type.optional) {
 		fieldAst = factory.createCallExpression(
 			factory.createPropertyAccessExpression(
@@ -101,7 +102,7 @@ export const fieldAst = (field: DataModelField) => {
 			[factory.createPropertyAccessExpression(
 				factory.createIdentifier("Schema"),
 				factory.createIdentifier("optional")
-			)])	
+			)])
 	}
 
 
@@ -155,23 +156,23 @@ export const modelAst = (
 		[],
 	);
 
-export const enumAst = (enum_: Enum) => 
-  factory.createVariableStatement(
-    [factory.createToken(ts.SyntaxKind.ExportKeyword)],
-    factory.createVariableDeclarationList(
-      [factory.createVariableDeclaration(
-        factory.createIdentifier(enum_.name),
-        undefined,
-        undefined,
-        factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createIdentifier("Schema"),
-            factory.createIdentifier("Literal")
-          ),
-          undefined,
-			enum_.fields.map(field => factory.createStringLiteral(field.name))
-        )
-      )],
-      ts.NodeFlags.Const
-    )
-  )
+export const enumAst = (enum_: Enum) =>
+	factory.createVariableStatement(
+		[factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		factory.createVariableDeclarationList(
+			[factory.createVariableDeclaration(
+				factory.createIdentifier(enum_.name),
+				undefined,
+				undefined,
+				factory.createCallExpression(
+					factory.createPropertyAccessExpression(
+						factory.createIdentifier("Schema"),
+						factory.createIdentifier("Literal")
+					),
+					undefined,
+					enum_.fields.map(field => factory.createStringLiteral(field.name))
+				)
+			)],
+			ts.NodeFlags.Const
+		)
+	)

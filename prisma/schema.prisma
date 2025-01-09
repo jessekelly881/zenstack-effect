@@ -25,6 +25,7 @@ model Space {
   slug      String      @unique()
   members   SpaceUser[]
   lists     List[]
+  decimal   Decimal
 }
 
 model SpaceUser {
