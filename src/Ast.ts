@@ -1,6 +1,8 @@
 import ts, { factory } from "typescript";
 
+import { getLiteral } from "@zenstackhq/sdk";
 import {
+	DataModelFieldAttribute,
 	Enum,
 	isEnum,
 	isTypeDef,
@@ -39,6 +41,7 @@ const unknownSchemaAst = factory.createPropertyAccessExpression(
 	factory.createIdentifier("Schema"),
 	factory.createIdentifier("Unknown")
 );
+
 
 /**
  * Given an identifier, e.g. A, returns an ast that produces `Schema.suspend((): Schema.Schema<A> => A)`
@@ -154,6 +157,71 @@ export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
 		),
 	);
 
+/** 
+ * @internal 
+ * @see https://github.com/zenstackhq/zenstack/blob/4b7d813624b4e73fcf8fd14d2849d5b1aef6aae3/packages/schema/src/plugins/zod/utils/schema-gen.ts#L211
+ */
+function getAttrLiteralArg<T extends string | number>(attr: DataModelFieldAttribute, paramName: string) {
+	const arg = attr.args.find((arg) => arg.$resolvedParam?.name === paramName);
+	return arg && getLiteral<T>(arg.value);
+}
+
+/**
+ * Given a `DataModelFieldAttribute`, returns an appropriate `Schema` modifier. E.g. `Schema.startsWith("str")`
+ */
+const fieldAttributeFilter = (attr: DataModelFieldAttribute) => {
+	const message = getAttrLiteralArg<string>(attr, 'message');
+	const messageAst = message ? factory.createObjectLiteralExpression(
+		[factory.createPropertyAssignment(
+			factory.createIdentifier("message"),
+			factory.createStringLiteral(message)
+		)],
+		false
+	) : undefined;
+
+	let filter: ts.Expression | undefined = undefined;
+
+	switch (attr.decl.ref?.name) {
+		case '@startsWith': {
+			const text = getAttrLiteralArg<string>(attr, 'text');
+			if (text) {
+				filter = factory.createCallExpression(
+					factory.createPropertyAccessExpression(
+						factory.createIdentifier("Schema"),
+						factory.createIdentifier("startsWith")
+					),
+					undefined,
+					[
+						factory.createStringLiteral(text),
+						...(messageAst ? [messageAst] : [])
+					]
+				)
+			}
+			break;
+		}
+
+		case '@regex': {
+			const expr = getAttrLiteralArg<string>(attr, 'regex');
+			if (expr) {
+				filter = factory.createCallExpression(
+					factory.createPropertyAccessExpression(
+						factory.createIdentifier("Schema"),
+						factory.createIdentifier("pattern")
+					),
+					undefined,
+					[
+						factory.createRegularExpressionLiteral(`/${expr}/`),
+						...(messageAst ? [messageAst] : [])
+					]
+				)
+			}
+			break;
+		}
+	}
+
+	return Option.fromNullable(filter);
+}
+
 /**
  * Generates a TypeScript AST for a `DataModelField`. Returns a `ts.PropertyAssignment`.
  */
@@ -200,17 +268,23 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 		)
 	}
 
-	if (type.optional) {
+	// Schema filters, transforms, etc. Provided to the schema in a .pipe() call. E.g. `.pipe(Schema.optional, Schema.min(4), ...)`
+	const schemaModifiers: ts.Expression[] = [
+		...(type.optional ? [factory.createPropertyAccessExpression(
+			factory.createIdentifier("Schema"),
+			factory.createIdentifier("optional")
+		)] : []),
+		...Arr.filterMap(field.attributes, (attr) => fieldAttributeFilter(attr))
+	]
+
+	if (schemaModifiers.length > 0) {
 		fieldAst = factory.createCallExpression(
 			factory.createPropertyAccessExpression(
 				fieldAst,
 				factory.createIdentifier("pipe")
 			),
 			undefined,
-			[factory.createPropertyAccessExpression(
-				factory.createIdentifier("Schema"),
-				factory.createIdentifier("optional")
-			)])
+			schemaModifiers)
 	}
 
 	return factory.createPropertyAssignment(
@@ -321,4 +395,6 @@ export const modelFileAst = (model: DataModel | TypeDef) => Effect.gen(function*
 		...modelImports,
 		modelAst
 	]
-}).pipe(Effect.provide(ImportSet.Default))
+}).pipe(
+	Effect.provide(ImportSet.Default),
+)
