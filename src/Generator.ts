@@ -1,35 +1,27 @@
 import { FileSystem, Path } from "@effect/platform";
 import { PlatformError } from "@effect/platform/Error";
 import { isDataModel, isEnum, isTypeDef, Model } from "@zenstackhq/sdk/ast";
-import { Effect, Layer, Predicate } from "effect";
+import { Effect, Layer, Predicate, Scope } from "effect";
 import * as Ast from "./Ast";
 
 export class Generator extends Effect.Tag("Generator")<Generator, {
-	readonly run: (model: Model, outputFolder: string) => Effect.Effect<void, PlatformError>
+	readonly run: (model: Model, outputFolder: string) => Effect.Effect<void, PlatformError, Scope.Scope>
 }>() { }
 
 export const layer = Layer.effect(Generator, Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path
 
-	const run = (model: Model, outputFolder: string) => Effect.gen(function* () {
+	const runCodegen = (model: Model, outputDirectory: string) => Effect.gen(function* () {
 		const dataModels = model.declarations.filter(Predicate.or(isDataModel, isTypeDef));
 		const enums = model.declarations.filter(isEnum);
 
-		// start fresh
-		if (yield* fs.exists(outputFolder)) {
-			yield* fs.remove(outputFolder, { recursive: true });
-		}
-		else {
-			yield* fs.makeDirectory(outputFolder, { recursive: true });
-		}
-
 		// copy over common folder
-		yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputFolder, "common"));
+		yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputDirectory, "common"));
 
 		// models ------------------------------
 
-		const modelsDirPath = path.join(outputFolder, "models");
+		const modelsDirPath = path.join(outputDirectory, "models");
 		yield* fs.makeDirectory(modelsDirPath, { recursive: true });
 
 		yield* Effect.forEach(dataModels, dataModel => Effect.gen(function* () {
@@ -45,6 +37,18 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 				Ast.enumAst(enum_)
 			]));
 		}), { concurrency: "unbounded" })
+	})
+
+	/**
+	 * Creates a temporary directory and runs the codegen in that directory. 
+	 * Then swaps in the temporary directory to the output folder and removes the temporary directory.
+	 * Ensures that the output folder is written to atomically. If codegen fails nothing is written to the output dir.
+	 */
+	const run = (model: Model, outputDirectoryPath: string) => Effect.gen(function* () {
+		const tempDir = yield* fs.makeTempDirectoryScoped()
+		yield* runCodegen(model, tempDir);
+
+		yield* fs.copy(tempDir, outputDirectoryPath, { overwrite: true, preserveTimestamps: true })
 	})
 
 	return { run }

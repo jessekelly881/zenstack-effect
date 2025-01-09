@@ -17,7 +17,7 @@ const run = (model: Model, options: PluginOptions, dmmf: DMMF.Document) => Effec
     if (isDisabled) { return }
 
     const outputFolder = resolvePath((options.output as string) ?? 'effect', options);
-    yield* generator.run(model, outputFolder);
+    yield* generator.run(model, outputFolder).pipe(Effect.scoped);
 }).pipe(
     Effect.provide(Generator.layer),
     Effect.provide(NodeContext.layer),
