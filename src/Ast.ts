@@ -10,7 +10,25 @@ import {
 	type DataModel,
 	type DataModelField
 } from "@zenstackhq/sdk/ast";
-import { Match } from "effect";
+import { Effect, HashSet, Match, Ref } from "effect";
+
+/** @internal */
+type Import = { type: "model", name: string } | { type: "common", name: string }
+
+/**
+ * Tracks what imports are required throughout the ast tree. 
+ * E.g. will add { type: "model", name: "Store" } if a field references the Store model.
+ */
+export class ImportSet extends Effect.Service<ImportSet>()("zenstack-effect/Ast/ImportSet", {
+	effect: Effect.gen(function* () {
+		const imports = yield* Ref.make(HashSet.make<Import[]>())
+
+		return {
+			imports: Ref.get(imports).pipe(Effect.map(hs => Array.from(HashSet.values(hs)))),
+			addImport: (i: Import) => Ref.update(imports, HashSet.add(i)),
+		}
+	})
+}) { }
 
 /** 
  * An ast that produces `Schema.Unknown`
