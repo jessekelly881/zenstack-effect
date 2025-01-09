@@ -10,7 +10,7 @@ import {
 	type DataModel,
 	type DataModelField
 } from "@zenstackhq/sdk/ast";
-import { Effect, HashSet, Match, Ref } from "effect";
+import { Array as Arr, Effect, HashSet, Match, Option, Ref } from "effect";
 
 /** @internal */
 type Import = { type: "model", name: string } | { type: "common", name: string }
@@ -114,22 +114,15 @@ export const schemaImportAst = factory.createImportDeclaration(
 	undefined,
 );
 
-/** 
- * Named imports from the common file.
- * @todo generate this with ts-morph
- * @internal 
- */
-const COMMON_FILE_IMPORTS = ["Double"]
-
 /**
  * Import declaration for `import { Schema } from "effect"`
  */
-export const commonTypesImportAst = factory.createImportDeclaration(
+export const commonImportsAst = (imports: string[]) => factory.createImportDeclaration(
 	undefined,
 	factory.createImportClause(
 		false,
 		undefined,
-		factory.createNamedImports(COMMON_FILE_IMPORTS.map(name =>
+		factory.createNamedImports(imports.map(name =>
 			factory.createImportSpecifier(
 				false,
 				undefined,
@@ -137,12 +130,13 @@ export const commonTypesImportAst = factory.createImportDeclaration(
 			),
 		)),
 	),
-	factory.createStringLiteral("effect"),
+	factory.createStringLiteral("../common"),
 	undefined,
 );
 
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
+ * The `Decimal` type must be handle seperately. 
  */
 export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
 	factory.createPropertyAccessExpression(
@@ -163,7 +157,8 @@ export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
 /**
  * Generates a TypeScript AST for a `DataModelField`. Returns a `ts.PropertyAssignment`.
  */
-export const fieldAst = (field: DataModelField | TypeDefField) => {
+export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(function* () {
+	const importSet = yield* ImportSet;
 	const type = field.type
 
 	let fieldAst: ts.Expression;
@@ -182,7 +177,7 @@ export const fieldAst = (field: DataModelField | TypeDefField) => {
 
 	else if (type.type) {
 		if (type.type === "Decimal") {
-			// todo! Add to ImportSet
+			yield* importSet.addImport({ "type": "common", name: "Decimal" })
 			fieldAst = factory.createIdentifier("Decimal")
 		}
 		else {
@@ -220,7 +215,7 @@ export const fieldAst = (field: DataModelField | TypeDefField) => {
 		factory.createIdentifier(field.name),
 		fieldAst,
 	);
-};
+});
 
 /**
  * Generates a TypeScript AST for a `Schema` from a DataModel
@@ -228,8 +223,8 @@ export const fieldAst = (field: DataModelField | TypeDefField) => {
 export const dataModelAst = (
 	model: DataModel | TypeDef,
 	options: { export?: boolean } = {},
-) =>
-	factory.createClassDeclaration(
+) => Effect.gen(function* () {
+	return factory.createClassDeclaration(
 		options.export ? [factory.createToken(ts.SyntaxKind.ExportKeyword)] : [],
 		factory.createIdentifier(model.name),
 		undefined,
@@ -253,8 +248,7 @@ export const dataModelAst = (
 						undefined,
 						[
 							factory.createStringLiteral(model.name),
-							factory.createObjectLiteralExpression(
-								model.fields.map((field) => fieldAst(field)),
+							factory.createObjectLiteralExpression(yield* Effect.forEach(model.fields, field => fieldAst(field)),
 								true,
 							),
 						],
@@ -264,7 +258,8 @@ export const dataModelAst = (
 			]),
 		],
 		[],
-	);
+	)
+});
 
 export const enumAst = (enum_: Enum) =>
 	factory.createVariableStatement(
@@ -286,3 +281,20 @@ export const enumAst = (enum_: Enum) =>
 			ts.NodeFlags.Const
 		)
 	)
+
+export const modelFileAst = (model: DataModel | TypeDef) => Effect.gen(function* () {
+	const importSet = yield* ImportSet;
+	const modelAst = yield* dataModelAst(model, { export: true });
+
+	const commonImports = yield* importSet.imports.pipe(
+		Effect.map(
+			Arr.filterMap(i => i.type === "common" ? Option.some(i.name) : Option.none())
+		)
+	)
+
+	return [
+		schemaImportAst,
+		...(commonImports.length > 0 ? [commonImportsAst(commonImports)] : []),
+		modelAst
+	]
+}).pipe(Effect.provide(ImportSet.Default))

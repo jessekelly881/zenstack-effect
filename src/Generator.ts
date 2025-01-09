@@ -34,10 +34,8 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 
 		yield* Effect.forEach(dataModels, dataModel => Effect.gen(function* () {
 			const filePath = path.join(modelsDirPath, dataModel.name + ".ts");
-			yield* fs.writeFileString(filePath, Ast.astToString([
-				Ast.schemaImportAst,
-				Ast.dataModelAst(dataModel, { export: true })
-			]));
+			const ast = yield* Ast.modelFileAst(dataModel);
+			yield* fs.writeFileString(filePath, Ast.astToString(ast));
 		}), { concurrency: "unbounded" })
 
 		yield* Effect.forEach(enums, enum_ => Effect.gen(function* () {
