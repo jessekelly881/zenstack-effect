@@ -11,14 +11,15 @@ config();
 export const name = 'ZenStack Effect Schema';
 export const description = 'Generate Effect Schemas from ZenStack';
 
-const run = (model: Model, options: PluginOptions, dmmf: DMMF.Document) => Effect.gen(function*() {
+const run = (model: Model, options: PluginOptions, dmmf: DMMF.Document) => Effect.gen(function* () {
+    const generator = yield* Generator.Generator;
     const isDisabled = yield* Config.boolean("DISABLE_ZENSTACK_EFFECT").pipe(Config.withDefault(false)) // todo! include options.disable
-    if(isDisabled) { return }
+    if (isDisabled) { return }
 
     const outputFolder = resolvePath((options.output as string) ?? 'effect', options);
-    yield* Generator.runCodegen(model, outputFolder);
-
+    yield* generator.run(model, outputFolder);
 }).pipe(
+    Effect.provide(Generator.layer),
     Effect.provide(NodeContext.layer),
     NodeRuntime.runMain
 )
