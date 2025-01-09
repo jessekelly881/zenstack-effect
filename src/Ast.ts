@@ -2,11 +2,51 @@ import ts, { factory } from "typescript";
 
 import {
 	Enum,
+	isEnum,
+	isTypeDef,
 	type BuiltinType,
 	type DataModel,
-	type DataModelField,
+	type DataModelField
 } from "@zenstackhq/sdk/ast";
 import { Match } from "effect";
+
+/** 
+ * Produces: `Schema.Unknown`
+ * @internal
+ */
+const unknownSchemaAst = factory.createPropertyAccessExpression(
+	factory.createIdentifier("Schema"),
+	factory.createIdentifier("Unknown")
+);
+
+/**
+ * Given an identifier, e.g. A, returns an ast that produces `Schema.suspend((): Schema.Schema<A> => A)`
+ * @internal
+ */
+const suspendedSchemaAst = (identifier: string) => factory.createCallExpression(
+	factory.createPropertyAccessExpression(
+		factory.createIdentifier("Schema"),
+		factory.createIdentifier("suspend")
+	),
+	undefined,
+	[factory.createArrowFunction(
+		undefined,
+		undefined,
+		[],
+		factory.createTypeReferenceNode(
+			factory.createQualifiedName(
+				factory.createIdentifier("Schema"),
+				factory.createIdentifier("Schema")
+			),
+			[factory.createTypeReferenceNode(
+				factory.createIdentifier(identifier),
+				undefined
+			)]
+		),
+		factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+		factory.createIdentifier(identifier)
+	)]
+)
 
 /**
  * Convert an AST to a string
@@ -79,7 +119,21 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
 export const fieldAst = (field: DataModelField) => {
 	const type = field.type
 
-	let fieldAst: ts.Expression = builtInTypeAst(type.type)
+	let fieldAst: ts.Expression;
+
+	if (field.type.reference?.ref) {
+		if (isEnum(field.type.reference?.ref)) {
+			fieldAst = factory.createIdentifier(field.type.reference.ref.name);
+		}
+
+		else if (isTypeDef(field.type.reference?.ref)) {
+			fieldAst = suspendedSchemaAst(field.type.reference.ref.name)
+		}
+
+		else { fieldAst = unknownSchemaAst; }
+	}
+
+	else { fieldAst = builtInTypeAst(type.type) }
 
 	if (type.array) {
 		fieldAst = factory.createCallExpression(
@@ -104,7 +158,6 @@ export const fieldAst = (field: DataModelField) => {
 				factory.createIdentifier("optional")
 			)])
 	}
-
 
 	return factory.createPropertyAssignment(
 		factory.createIdentifier(field.name),
