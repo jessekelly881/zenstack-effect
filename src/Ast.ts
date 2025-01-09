@@ -4,6 +4,8 @@ import {
 	Enum,
 	isEnum,
 	isTypeDef,
+	TypeDef,
+	TypeDefField,
 	type BuiltinType,
 	type DataModel,
 	type DataModelField
@@ -11,7 +13,7 @@ import {
 import { Match } from "effect";
 
 /** 
- * Produces: `Schema.Unknown`
+ * An ast that produces `Schema.Unknown`
  * @internal
  */
 const unknownSchemaAst = factory.createPropertyAccessExpression(
@@ -93,6 +95,33 @@ export const schemaImportAst = factory.createImportDeclaration(
 	undefined,
 );
 
+/** 
+ * Named imports from the common file.
+ * @todo generate this with ts-morph
+ * @internal 
+ */
+const COMMON_FILE_IMPORTS = ["Double"]
+
+/**
+ * Import declaration for `import { Schema } from "effect"`
+ */
+export const commonTypesImportAst = factory.createImportDeclaration(
+	undefined,
+	factory.createImportClause(
+		false,
+		undefined,
+		factory.createNamedImports(COMMON_FILE_IMPORTS.map(name =>
+			factory.createImportSpecifier(
+				false,
+				undefined,
+				factory.createIdentifier(name),
+			),
+		)),
+	),
+	factory.createStringLiteral("effect"),
+	undefined,
+);
+
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
  */
@@ -116,7 +145,7 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
 /**
  * Generates a TypeScript AST for a `DataModelField`. Returns a `ts.PropertyAssignment`.
  */
-export const fieldAst = (field: DataModelField) => {
+export const fieldAst = (field: DataModelField | TypeDefField) => {
 	const type = field.type
 
 	let fieldAst: ts.Expression;
@@ -168,8 +197,8 @@ export const fieldAst = (field: DataModelField) => {
 /**
  * Generates a TypeScript AST for a `Schema` from a DataModel
  */
-export const modelAst = (
-	model: DataModel,
+export const dataModelAst = (
+	model: DataModel | TypeDef,
 	options: { export?: boolean } = {},
 ) =>
 	factory.createClassDeclaration(

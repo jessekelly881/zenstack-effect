@@ -1,12 +1,12 @@
 import { FileSystem, Path } from "@effect/platform";
-import { isDataModel, isEnum, Model } from "@zenstackhq/sdk/ast";
-import { Effect } from "effect";
+import { isDataModel, isEnum, isTypeDef, Model } from "@zenstackhq/sdk/ast";
+import { Effect, Predicate } from "effect";
 import * as Ast from "./Ast";
 
 export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(function* () {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path
-	const dataModels = model.declarations.filter(isDataModel);
+	const dataModels = model.declarations.filter(Predicate.or(isDataModel, isTypeDef));
 	const enums = model.declarations.filter(isEnum);
 
 	// start fresh
@@ -17,6 +17,9 @@ export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(fun
 		yield* fs.makeDirectory(outputFolder, { recursive: true });
 	}
 
+	// copy over common folder
+	yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputFolder, "common"));
+
 	// models ------------------------------
 
 	const modelsDirPath = path.join(outputFolder, "models");
@@ -26,7 +29,7 @@ export const runCodegen = (model: Model, outputFolder: string) => Effect.gen(fun
 		const filePath = path.join(modelsDirPath, dataModel.name + ".ts");
 		yield* fs.writeFileString(filePath, Ast.astToString([
 			Ast.schemaImportAst,
-			Ast.modelAst(dataModel, { export: true })
+			Ast.dataModelAst(dataModel, { export: true })
 		]));
 	}), { concurrency: "unbounded" })
 
