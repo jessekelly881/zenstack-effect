@@ -30,6 +30,7 @@ export class ImportSet extends Effect.Service<ImportSet>()("zenstack-effect/Ast/
 	})
 }) { }
 
+
 /** 
  * An ast that produces `Schema.Unknown`
  * @internal
@@ -143,7 +144,7 @@ export const commonTypesImportAst = factory.createImportDeclaration(
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
  */
-export const builtInTypeAst = (type: BuiltinType | undefined) =>
+export const builtInTypeAst = (type: BuiltinType) =>
 	factory.createPropertyAccessExpression(
 		factory.createIdentifier("Schema"),
 		Match.value(type).pipe(
@@ -156,7 +157,7 @@ export const builtInTypeAst = (type: BuiltinType | undefined) =>
 			Match.when("Decimal", () => factory.createIdentifier("Number")),
 			Match.when("Bytes", () => factory.createIdentifier("Uint8Array")),
 			Match.when("DateTime", () => factory.createIdentifier("DateTimeUtc")),
-			Match.orElse(() => factory.createIdentifier("Unknown")),
+			Match.exhaustive
 		),
 	);
 
@@ -180,7 +181,8 @@ export const fieldAst = (field: DataModelField | TypeDefField) => {
 		else { fieldAst = unknownSchemaAst; }
 	}
 
-	else { fieldAst = builtInTypeAst(type.type) }
+	else if (type.type) { fieldAst = builtInTypeAst(type.type) }
+	else { fieldAst = unknownSchemaAst }
 
 	if (type.array) {
 		fieldAst = factory.createCallExpression(
