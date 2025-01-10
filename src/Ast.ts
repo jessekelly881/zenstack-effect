@@ -280,6 +280,7 @@ const fieldAttributeModifier = (attr: DataModelFieldAttribute) => {
 			filter = composeWithAst("URL");
 			break;
 		}
+
 		case '@trim': {
 			filter = composeWithAst("Trim");
 			break;
@@ -325,7 +326,10 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 			fieldAst = suspendedSchemaAst(field.type.reference.ref.name)
 		}
 
-		else { fieldAst = unknownSchemaAst; }
+		else {
+			yield* Effect.logDebug(`Unknown ref: ${field.type.reference?.ref.name}`);
+			fieldAst = unknownSchemaAst;
+		}
 	}
 
 	else if (type.type) {
@@ -344,7 +348,10 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 		}
 	}
 
-	else { fieldAst = unknownSchemaAst }
+	else {
+		yield* Effect.logDebug(`Unknown field: ${field.name}`);
+		fieldAst = unknownSchemaAst
+	}
 
 	if (type.array) {
 		fieldAst = factory.createCallExpression(
@@ -487,3 +494,8 @@ export const modelFileAst = (model: DataModel | TypeDef) => Effect.gen(function*
 }).pipe(
 	Effect.provide(ImportSet.Default),
 )
+
+export const enumFileAst = (enum_: Enum) => [
+	schemaImportAst,
+	enumAst(enum_)
+]

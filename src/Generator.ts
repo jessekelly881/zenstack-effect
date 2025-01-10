@@ -16,26 +16,20 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 		const dataModels = model.declarations.filter(Predicate.or(isDataModel, isTypeDef));
 		const enums = model.declarations.filter(isEnum);
 
-		// copy over common folder
-		yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputDirectory, "common"));
-
-		// models ------------------------------
-
 		const modelsDirPath = path.join(outputDirectory, "models");
 		yield* fs.makeDirectory(modelsDirPath, { recursive: true });
 
+		// copy over common folder
+		yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputDirectory, "common"));
+
 		yield* Effect.forEach(dataModels, dataModel => Effect.gen(function* () {
 			const filePath = path.join(modelsDirPath, dataModel.name + ".ts");
-			const ast = yield* Ast.modelFileAst(dataModel);
-			yield* fs.writeFileString(filePath, Ast.astToString(ast));
+			yield* fs.writeFileString(filePath, Ast.astToString(yield* Ast.modelFileAst(dataModel)));
 		}), { concurrency: "unbounded" })
 
 		yield* Effect.forEach(enums, enum_ => Effect.gen(function* () {
 			const filePath = path.join(modelsDirPath, enum_.name + ".ts");
-			yield* fs.writeFileString(filePath, Ast.astToString([
-				Ast.schemaImportAst,
-				Ast.enumAst(enum_)
-			]));
+			yield* fs.writeFileString(filePath, Ast.astToString(Ast.enumFileAst(enum_)));
 		}), { concurrency: "unbounded" })
 	})
 
@@ -52,7 +46,7 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 	}).pipe(
 		Effect.scoped,
 		Effect.timed,
-		Effect.tap(([duration]) => Effect.logDebug(`Completed codegen in: ${Duration.format(duration)}`))
+		Effect.tap(([duration]) => Effect.logInfo(`Completed effect codegen in: ${Duration.format(duration)}`))
 	)
 
 	return {
