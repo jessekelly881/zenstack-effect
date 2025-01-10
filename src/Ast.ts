@@ -139,9 +139,9 @@ export const commonImportsAst = (imports: string[]) => factory.createImportDecla
 
 /**
  * Generates a TypeScript AST for a `BuiltinType`. Returns a `ts.PropertyAccessExpression`.
- * The `Decimal` type must be handle seperately. 
+ * `Decimal` and `Bytes` must be handle seperately. 
  */
-export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
+export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal" | "Bytes">) =>
 	factory.createPropertyAccessExpression(
 		factory.createIdentifier("Schema"),
 		Match.value(type).pipe(
@@ -151,7 +151,6 @@ export const builtInTypeAst = (type: Exclude<BuiltinType, "Decimal">) =>
 			Match.when("Float", () => factory.createIdentifier("Number")),
 			Match.when("String", () => factory.createIdentifier("String")),
 			Match.when("Json", () => factory.createIdentifier("Object")),
-			Match.when("Bytes", () => factory.createIdentifier("Uint8Array")),
 			Match.when("DateTime", () => factory.createIdentifier("DateTimeUtc")),
 			Match.exhaustive
 		),
@@ -334,6 +333,12 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 			yield* importSet.addImport({ "type": "common", name: "Decimal" })
 			fieldAst = factory.createIdentifier("Decimal")
 		}
+
+		else if (type.type === "Bytes") {
+			yield* importSet.addImport({ "type": "common", name: "Bytes" })
+			fieldAst = factory.createIdentifier("Bytes")
+		}
+
 		else {
 			fieldAst = builtInTypeAst(type.type)
 		}

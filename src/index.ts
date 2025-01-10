@@ -3,7 +3,7 @@ import type { DMMF } from '@prisma/generator-helper';
 import { PluginOptions, resolvePath } from '@zenstackhq/sdk';
 import { Model } from '@zenstackhq/sdk/ast';
 import { config } from 'dotenv';
-import { Config, Effect } from "effect";
+import { Config, Effect, Logger, LogLevel } from "effect";
 import * as Generator from "./Generator";
 
 config();
@@ -21,6 +21,7 @@ const run = (model: Model, options: PluginOptions, dmmf: DMMF.Document) => Effec
 }).pipe(
     Effect.provide(Generator.layer),
     Effect.provide(NodeContext.layer),
+    Logger.withMinimumLogLevel((options.debug as boolean) ? LogLevel.Debug : LogLevel.Info),
     NodeRuntime.runMain
 )
 

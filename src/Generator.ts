@@ -1,7 +1,7 @@
 import { FileSystem, Path } from "@effect/platform";
 import { PlatformError } from "@effect/platform/Error";
 import { isDataModel, isEnum, isTypeDef, Model } from "@zenstackhq/sdk/ast";
-import { Effect, Layer, Predicate } from "effect";
+import { Duration, Effect, Layer, Predicate } from "effect";
 import * as Ast from "./Ast";
 
 export class Generator extends Effect.Tag("Generator")<Generator, {
@@ -49,7 +49,11 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 		yield* runCodegen(model, tempDir);
 
 		yield* fs.copy(tempDir, outputDirectoryPath, { overwrite: true, preserveTimestamps: true })
-	}).pipe(Effect.scoped)
+	}).pipe(
+		Effect.scoped,
+		Effect.timed,
+		Effect.tap(([duration]) => Effect.logDebug(`Ran codegen in: ${Duration.format(duration)}`))
+	)
 
 	return {
 		run

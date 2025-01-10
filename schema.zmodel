@@ -14,8 +14,9 @@ generator js {
     provider = 'prisma-client-js'
 }
 
-plugin zenstackmd {
+plugin effect {
     provider = './dist/index.js'
+    debug = true
 }
 
 plugin zod {
