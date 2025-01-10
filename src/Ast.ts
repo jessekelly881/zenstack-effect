@@ -354,11 +354,11 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 
 	// Schema filters, transforms, etc. Provided to the schema in a .pipe() call. E.g. `.pipe(Schema.optional, Schema.min(4), ...)`
 	const schemaModifiers: ts.Expression[] = [
-		...(type.optional ? [factory.createPropertyAccessExpression(
+		...Arr.filterMap(field.attributes, (attr) => fieldAttributeModifier(attr)),
+		...(type.optional ? [factory.createPropertyAccessExpression( // optional must be last
 			factory.createIdentifier("Schema"),
 			factory.createIdentifier("optional")
 		)] : []),
-		...Arr.filterMap(field.attributes, (attr) => fieldAttributeModifier(attr))
 	]
 
 	if (schemaModifiers.length > 0) {
