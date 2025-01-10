@@ -52,7 +52,7 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 	}).pipe(
 		Effect.scoped,
 		Effect.timed,
-		Effect.tap(([duration]) => Effect.logDebug(`Ran codegen in: ${Duration.format(duration)}`))
+		Effect.tap(([duration]) => Effect.logDebug(`Completed codegen in: ${Duration.format(duration)}`))
 	)
 
 	return {
