@@ -12,7 +12,7 @@ import {
 	type DataModel,
 	type DataModelField
 } from "@zenstackhq/sdk/ast";
-import { Array as Arr, Effect, HashSet, Match, Option, Ref } from "effect";
+import { Array as Arr, Effect, HashSet, Match, Option, Ref, Schema } from "effect";
 
 /** @internal */
 type Import = { type: "model", name: string } | { type: "common", name: string }
@@ -167,9 +167,9 @@ function getAttrLiteralArg<T extends string | number>(attr: DataModelFieldAttrib
 }
 
 /**
- * Given a `DataModelFieldAttribute`, returns an appropriate `Schema` modifier. E.g. `Schema.startsWith("str")`
+ * Given a `DataModelFieldAttribute`, returns an appropriate `Schema` modifier. E.g. `Schema.startsWith("str")` or `Schema.compose(Schema.UUID)`
  */
-const fieldAttributeFilter = (attr: DataModelFieldAttribute) => {
+const fieldAttributeModifier = (attr: DataModelFieldAttribute) => {
 	const message = getAttrLiteralArg<string>(attr, 'message');
 	const messageAst = message ? factory.createObjectLiteralExpression(
 		[factory.createPropertyAssignment(
@@ -181,21 +181,42 @@ const fieldAttributeFilter = (attr: DataModelFieldAttribute) => {
 
 	let filter: ts.Expression | undefined = undefined;
 
+	/**
+	 * Ast that produces: `Schema._filterName_(text, { message })`
+	 */
+	const schemaFilterAst = (filterName: keyof typeof Schema, args: ts.Expression[]) => factory.createCallExpression(
+		factory.createPropertyAccessExpression(
+			factory.createIdentifier("Schema"),
+			factory.createIdentifier(filterName)
+		),
+		undefined,
+		[
+			...args,
+			...(messageAst ? [messageAst] : [])
+		]
+	)
+
+	/**
+	 * Ast that produces: `Schema.compose(Schema._schemaName_)`. E.g. `Schema.compose(Schema.UUID)`
+	 */
+	const composeWithAst = (schemaName: string) => factory.createCallExpression(
+		factory.createPropertyAccessExpression(
+			factory.createIdentifier("Schema"),
+			factory.createIdentifier("compose")
+		),
+		undefined,
+		[factory.createPropertyAccessExpression(
+			factory.createIdentifier("Schema"),
+			factory.createIdentifier(schemaName)
+		)]
+	)
+
+
 	switch (attr.decl.ref?.name) {
-		case '@startsWith': {
+		case '@contains': {
 			const text = getAttrLiteralArg<string>(attr, 'text');
 			if (text) {
-				filter = factory.createCallExpression(
-					factory.createPropertyAccessExpression(
-						factory.createIdentifier("Schema"),
-						factory.createIdentifier("startsWith")
-					),
-					undefined,
-					[
-						factory.createStringLiteral(text),
-						...(messageAst ? [messageAst] : [])
-					]
-				)
+				filter = schemaFilterAst("includes", [factory.createStringLiteral(text)]);
 			}
 			break;
 		}
@@ -203,20 +224,83 @@ const fieldAttributeFilter = (attr: DataModelFieldAttribute) => {
 		case '@regex': {
 			const expr = getAttrLiteralArg<string>(attr, 'regex');
 			if (expr) {
-				filter = factory.createCallExpression(
-					factory.createPropertyAccessExpression(
-						factory.createIdentifier("Schema"),
-						factory.createIdentifier("pattern")
-					),
-					undefined,
-					[
-						factory.createRegularExpressionLiteral(`/${expr}/`),
-						...(messageAst ? [messageAst] : [])
-					]
-				)
+				filter = schemaFilterAst("pattern", [factory.createRegularExpressionLiteral(`/${expr}/`)]);
 			}
 			break;
 		}
+
+		case '@startsWith': {
+			const text = getAttrLiteralArg<string>(attr, 'text');
+			if (text) {
+				filter = schemaFilterAst("startsWith", [factory.createStringLiteral(text)]);
+			}
+			break;
+		}
+
+		case '@endsWith': {
+			const text = getAttrLiteralArg<string>(attr, 'text');
+			if (text) {
+				filter = schemaFilterAst("endsWith", [factory.createStringLiteral(text)]);
+			}
+			break;
+		}
+
+		case '@gt': {
+			const value = getAttrLiteralArg<number>(attr, 'value');
+			if (value !== undefined) {
+				filter = schemaFilterAst("greaterThan", [factory.createNumericLiteral(value)]);
+			}
+			break;
+		}
+
+		case '@gte': {
+			const value = getAttrLiteralArg<number>(attr, 'value');
+			if (value !== undefined) {
+				filter = schemaFilterAst("greaterThanOrEqualTo", [factory.createNumericLiteral(value)]);
+			}
+			break;
+		}
+
+		case '@lt': {
+			const value = getAttrLiteralArg<number>(attr, 'value');
+			if (value !== undefined) {
+				filter = schemaFilterAst("lessThan", [factory.createNumericLiteral(value)]);
+			}
+			break;
+		}
+
+		case '@lte': {
+			const value = getAttrLiteralArg<number>(attr, 'value');
+			if (value !== undefined) {
+				filter = schemaFilterAst("lessThanOrEqualTo", [factory.createNumericLiteral(value)]);
+			}
+			break;
+		}
+
+		case '@url': {
+			filter = composeWithAst("URL");
+			break;
+		}
+		case '@trim': {
+			filter = composeWithAst("Trim");
+			break;
+		}
+
+		case '@lower': {
+			filter = composeWithAst("Lowercase");
+			break;
+		}
+
+		case '@upper': {
+			filter = composeWithAst("Uppercase");
+			break;
+		}
+
+		case '@db.Uuid': {
+			filter = composeWithAst("UUID");
+			break;
+		}
+
 	}
 
 	return Option.fromNullable(filter);
@@ -274,7 +358,7 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 			factory.createIdentifier("Schema"),
 			factory.createIdentifier("optional")
 		)] : []),
-		...Arr.filterMap(field.attributes, (attr) => fieldAttributeFilter(attr))
+		...Arr.filterMap(field.attributes, (attr) => fieldAttributeModifier(attr))
 	]
 
 	if (schemaModifiers.length > 0) {
