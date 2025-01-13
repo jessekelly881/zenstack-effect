@@ -376,6 +376,12 @@ const fieldAttributeModifier = (attr: DataModelFieldAttribute, fieldType?: Built
 }
 
 /**
+ * Order of field names in a `DataModel` or `TypeDef`.
+ * @internal
+ */
+const fieldNameOrder = Order.mapInput(Order.string, (f: DataModelField | TypeDefField) => f.name)
+
+/**
  * Generates a TypeScript AST for a `DataModelField`. Returns a `ts.PropertyAssignment`.
  */
 export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(function* () {
@@ -494,7 +500,7 @@ export const dataModelAst = (
 						undefined,
 						[
 							factory.createStringLiteral(model.name),
-							factory.createObjectLiteralExpression(yield* Effect.forEach(model.fields, field => fieldAst(field)),
+							factory.createObjectLiteralExpression(yield* Effect.forEach(Arr.sortBy(fieldNameOrder)(model.fields), field => fieldAst(field)),
 								true,
 							),
 						],
