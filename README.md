@@ -2,10 +2,12 @@
 
 ## Usage
 
+```bash
+pnpm add zenstack-effect
+```
+
 ```zmodel
 plugin effect {
-    provider = './dist/index.js'
-    output   = './effect'
-    debug = true
+    provider = 'zenstack-effect'
 }
 ```

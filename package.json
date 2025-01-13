@@ -1,7 +1,7 @@
 {
   "name": "zenstack-effect",
   "displayName": "Effect Schema Generator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Generate Effect Schemas from ZenStack",
   "main": "index.js",
   "repository": {
