@@ -315,7 +315,23 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 
 	let fieldAst: ts.Expression;
 
-	if (field.type.reference?.ref) {
+	if (type.type) {
+		if (type.type === "Decimal") {
+			yield* importSet.addImport({ "type": "common", name: "Decimal" })
+			fieldAst = factory.createIdentifier("Decimal")
+		}
+
+		else if (type.type === "Bytes") {
+			yield* importSet.addImport({ "type": "common", name: "Bytes" })
+			fieldAst = factory.createIdentifier("Bytes")
+		}
+
+		else {
+			fieldAst = builtInTypeAst(type.type)
+		}
+	}
+
+	else if (field.type.reference?.ref) {
 		const name = field.type.reference.ref.name;
 		if (isEnum(field.type.reference?.ref)) {
 			yield* importSet.addImport({ type: "model", name });
@@ -332,21 +348,6 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 		}
 	}
 
-	else if (type.type) {
-		if (type.type === "Decimal") {
-			yield* importSet.addImport({ "type": "common", name: "Decimal" })
-			fieldAst = factory.createIdentifier("Decimal")
-		}
-
-		else if (type.type === "Bytes") {
-			yield* importSet.addImport({ "type": "common", name: "Bytes" })
-			fieldAst = factory.createIdentifier("Bytes")
-		}
-
-		else {
-			fieldAst = builtInTypeAst(type.type)
-		}
-	}
 
 	else {
 		yield* Effect.logDebug(`Unknown field: ${field.name}`);
