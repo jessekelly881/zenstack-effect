@@ -15,7 +15,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "npm run lint && npm run clean && tsc && copyfiles ./package.json ./README.md ./README-1.svg ./README-2.svg ./LICENSE ./static/* dist",
-    "dev": "zenstack generate",
+    "dev": "zenstack generate --output codegen --no-compile",
     "watch": "tsc --watch",
     "lint": "eslint src --ext ts",
     "test": "ts-node test.ts"

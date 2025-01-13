@@ -31,6 +31,12 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 			const filePath = path.join(modelsDirPath, enum_.name + ".ts");
 			yield* fs.writeFileString(filePath, Ast.astToString(Ast.enumFileAst(enum_)));
 		}), { concurrency: "unbounded" })
+
+		// /models barrel file
+		yield* fs.writeFileString(
+			path.join(modelsDirPath, "index.ts"),
+			Ast.astToString(Ast.barrelFileAst([...dataModels, ...enums]))
+		);
 	})
 
 	/**
