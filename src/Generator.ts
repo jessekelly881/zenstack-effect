@@ -20,7 +20,7 @@ export const layer = Layer.effect(Generator, Effect.gen(function* () {
 		yield* fs.makeDirectory(modelsDirPath, { recursive: true });
 
 		// copy over common folder
-		yield* fs.copy(path.join(__dirname, "..", "static"), path.join(outputDirectory, "common"));
+		yield* fs.copy(path.join(__dirname, "static"), path.join(outputDirectory, "common"));
 
 		yield* Effect.forEach(dataModels, dataModel => Effect.gen(function* () {
 			const filePath = path.join(modelsDirPath, dataModel.name + ".ts");
