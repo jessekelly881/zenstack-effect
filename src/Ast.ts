@@ -176,19 +176,26 @@ class SchemaModifier {
  * `Schema.Schema<string, string>` modifiers.
  * @internal 
  */
-const stringModifiers: (keyof typeof Schema)[] = ["Trim", "Lowercase", "Uppercase", "Capitalize"]
+const stringModifiers: (keyof typeof Schema)[] = ["Trim", "Lowercase", "Uppercase", "Capitalize", "length", "minLength", "maxLength"]
+
+/**
+ * Modifiers that transform a string into a different type.
+ * @internal
+ */
+const stringTransforms: (keyof typeof Schema)[] = ["URL"]
 
 /** 
  * Order of transforms and filters in Schema.pipe(...) expression.
  * @internal
  */
 const schemaModifierOrder = Order.make<SchemaModifier>((self, that) => {
-	// Trim should go before URL
-	if (stringModifiers.includes(self.name) && that.name === "URL") { // URL must go after all String modifiers since the result isn't a string.
+	// String modifiers(i.e. string -> string) should go before string transforms(e.g. string -> number)
+
+	if (stringModifiers.includes(self.name) && stringTransforms.includes(that.name)) {
 		return -1
 	}
 
-	if (self.name === "URL" && stringModifiers.includes(that.name)) { // URL must go after all String modifiers since the result isn't a string.
+	if (stringTransforms.includes(self.name) && stringModifiers.includes(that.name)) {
 		return 1
 	}
 
@@ -198,7 +205,7 @@ const schemaModifierOrder = Order.make<SchemaModifier>((self, that) => {
 /**
  * Given a `DataModelFieldAttribute`, returns an appropriate `Schema` modifier. E.g. `Schema.startsWith("str")` or `Schema.compose(Schema.UUID)`
  */
-const fieldAttributeModifier = (attr: DataModelFieldAttribute): Option.Option<SchemaModifier> => {
+const fieldAttributeModifier = (attr: DataModelFieldAttribute, fieldType?: BuiltinType): Option.Option<SchemaModifier> => {
 	const message = getAttrLiteralArg<string>(attr, 'message');
 	const messageAst = message ? factory.createObjectLiteralExpression(
 		[factory.createPropertyAssignment(
@@ -240,8 +247,40 @@ const fieldAttributeModifier = (attr: DataModelFieldAttribute): Option.Option<Sc
 		)]
 	)
 
-
 	switch (attr.decl.ref?.name) {
+		case '@length': {
+			if (fieldType === "String") {
+				const min = getAttrLiteralArg<number>(attr, 'min');
+				const max = getAttrLiteralArg<number>(attr, 'max');
+
+				if (min && max) {
+					filter = {
+						name: "length", ast: schemaFilterAst("length",
+							[factory.createObjectLiteralExpression(
+								[factory.createPropertyAssignment(
+									factory.createIdentifier("min"),
+									factory.createNumericLiteral(min)
+								),
+								factory.createPropertyAssignment(
+									factory.createIdentifier("max"),
+									factory.createNumericLiteral(max)
+								)
+								],
+								false
+							)]
+						)
+					};
+				}
+
+				else if (min) {
+					filter = { name: "minLength", ast: schemaFilterAst("minLength", [factory.createNumericLiteral(min)]) };
+				}
+				else if (max) {
+					filter = { name: "maxLength", ast: schemaFilterAst("maxLength", [factory.createNumericLiteral(max)]) };
+				}
+			}
+			break;
+		}
 		case '@contains': {
 			const text = getAttrLiteralArg<string>(attr, 'text');
 			if (text) {
@@ -397,7 +436,7 @@ export const fieldAst = (field: DataModelField | TypeDefField) => Effect.gen(fun
 
 	// Schema filters, transforms, etc. Provided to the schema in a .pipe() call. E.g. `.pipe(Schema.optional, Schema.min(4), ...)`
 	const schemaModifiers: readonly SchemaModifier[] = [
-		...Arr.filterMap(field.attributes, (attr) => fieldAttributeModifier(attr)),
+		...Arr.filterMap(field.attributes, (attr) => fieldAttributeModifier(attr, field.type.type)),
 		...(type.optional ? [{
 			name: "optional", ast: factory.createPropertyAccessExpression( // optional must be last
 				factory.createIdentifier("Schema"),
