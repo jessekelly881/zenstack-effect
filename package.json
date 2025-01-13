@@ -18,6 +18,7 @@
     "dev": "zenstack generate --output codegen --no-compile",
     "watch": "tsc --watch",
     "lint": "eslint src --ext ts",
+    "check": "tsc --project tsconfig.json --noEmit --downlevelIteration",
     "test": "ts-node test.ts"
   },
   "author": "Jesse Kelly",
