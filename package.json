@@ -17,7 +17,7 @@
     "build": "npm run lint && npm run clean && tsc && copyfiles ./package.json ./README.md ./README-1.svg ./README-2.svg ./LICENSE ./static/* dist",
     "dev": "zenstack generate --output codegen --no-compile",
     "watch": "tsc --watch",
-    "lint": "eslint src --ext ts",
+    "lint": "eslint src",
     "check": "tsc --project tsconfig.json --noEmit --downlevelIteration",
     "test": "ts-node test.ts"
   },
@@ -40,6 +40,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.19.0",
     "@prisma/client": "^6.2.1",
     "@types/node": "^22.10.6",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
