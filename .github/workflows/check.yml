@@ -16,7 +16,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Install dependencies
               uses: ./.github/actions/setup
             - run: pnpm build
@@ -26,7 +26,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Install dependencies
               uses: ./.github/actions/setup
             - run: pnpm check
@@ -36,7 +36,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Install dependencies
               uses: ./.github/actions/setup
             - run: pnpm lint
